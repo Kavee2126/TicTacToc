@@ -1,30 +1,38 @@
 #include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
 
+#define MIN_SIZE 3
 #define MAX_SIZE 10
 
+char board[MAX_SIZE][MAX_SIZE];
+int N;
+FILE *logFile;
+
 // Function to initialize the board
-void initializeBoard(char board[MAX_SIZE][MAX_SIZE], int n) {
-    for (int i = 0; i < n; i++)
-        for (int j = 0; j < n; j++)
+void initializeBoard() {
+    for (int i = 0; i < N; i++)
+        for (int j = 0; j < N; j++)
             board[i][j] = ' ';
 }
 
 // Function to display the board
-void displayBoard(char board[MAX_SIZE][MAX_SIZE], int n) {
+void displayBoard() {
     printf("\n");
-    for (int i = 0; i < n; i++) {
-        // Print row
-        for (int j = 0; j < n; j++) {
+    for (int i = 0; i < N; i++) {
+    
+         // Print row
+        for (int j = 0; j < N; j++) {
             printf(" %c ", board[i][j]);
-            if (j < n - 1) printf("|");
+            if (j < N - 1) printf("|");
         }
-        printf("\n");
-
+        
         // Print separator
-        if (i < n - 1) {
-            for (int k = 0; k < n; k++) {
+        if (i < N - 1) {
+            printf("\n");
+            for (int k = 0; k < N; k++) {
                 printf("---");
-                if (k < n - 1) printf("+");
+                if (k < N - 1) printf("+");
             }
             printf("\n");
         }
@@ -33,106 +41,107 @@ void displayBoard(char board[MAX_SIZE][MAX_SIZE], int n) {
 }
 
 // Function to validate move
-int isValidMove(char board[MAX_SIZE][MAX_SIZE], int row, int col, int n) {
-    return row >= 0 && row < n && col >= 0 && col < n && board[row][col] == ' ';
+int isValidMove(int row, int col) {
+    return row >= 0 && row < N && col >= 0 && col < N && board[row][col] == ' ';
 }
 
-// Function to place symbol
-void placeSymbol(char board[MAX_SIZE][MAX_SIZE], int row, int col, char symbol) {
-    board[row][col] = symbol;
+
+void logMove(const char *player, int row, int col) {
+    fprintf(logFile, "%s moved to (%d, %d)\n", player, row, col);
 }
 
 // Function to accept user input
-void getUserMove(int* row, int* col, int player, char symbol, int n) {
-    printf("Player %d (%c), enter row and column (0 to %d): ", player, symbol, n - 1);
-    scanf("%d %d", row, col);
+void getUserMove() {
+    int row, col;
+    do {
+        printf("Enter your move (row and column: 0 to %d): ", N - 1);
+        scanf("%d %d", &row, &col);
+    } while (!isValidMove(row, col));
+    board[row][col] = 'X';
+    logMove("User", row, col);
+}
+// Function to generate computer input
+void generateComputerMove(int *row, int *col) {
+    do {
+        *row = rand() % N;
+        *col = rand() % N;
+    } while (!isValidMove(*row, *col));
 }
 
-// Function to check for win
-int checkWin(char board[MAX_SIZE][MAX_SIZE], int n, char symbol) {
-    int win;
+// Function to play by computer
+void playComputerTurn() {
+    int row, col;
+    generateComputerMove(&row, &col);
+    board[row][col] = 'O';
+    printf("Computer played at (%d, %d)\n", row, col);
+    logMove("Computer", row, col);
+}
 
+char checkWinner() {
     // Check rows and columns
-    for (int i = 0; i < n; i++) {
-        win = 1;
-        for (int j = 0; j < n; j++)
-            if (board[i][j] != symbol) win = 0;
-        if (win) return 1;
-
-        win = 1;
-        for (int j = 0; j < n; j++)
-            if (board[j][i] != symbol) win = 0;
-        if (win) return 1;
+    for (int i = 0; i < N; i++) {
+        int rowMatch = 1, colMatch = 1;
+        for (int j = 1; j < N; j++) {
+            if (board[i][j] != board[i][0] || board[i][j] == ' ') rowMatch = 0;
+            if (board[j][i] != board[0][i] || board[j][i] == ' ') colMatch = 0;
+        }
+        if (rowMatch) return board[i][0];
+        if (colMatch) return board[0][i];
     }
 
     // Check diagonals
-    win = 1;
-    for (int i = 0; i < n; i++)
-        if (board[i][i] != symbol) win = 0;
-    if (win) return 1;
+    int diag1 = 1, diag2 = 1;
+    for (int i = 1; i < N; i++) {
+        if (board[i][i] != board[0][0] || board[i][i] == ' ') diag1 = 0;
+        if (board[i][N - i - 1] != board[0][N - 1] || board[i][N - i - 1] == ' ') diag2 = 0;
+    }
+    if (diag1) return board[0][0];
+    if (diag2) return board[0][N - 1];
 
-    win = 1;
-    for (int i = 0; i < n; i++)
-        if (board[i][n - i - 1] != symbol) win = 0;
-    if (win) return 1;
-
-    return 0;
+    return ' ';
 }
 
-// Function to check for draw
-int isDraw(char board[MAX_SIZE][MAX_SIZE], int n) {
-    for (int i = 0; i < n; i++)
-        for (int j = 0; j < n; j++)
-            if (board[i][j] == ' ') return 0;
+int isDraw() {
+    for (int i = 0; i < N; i++)
+        for (int j = 0; j < N; j++)
+            if (board[i][j] == ' ')
+                return 0;
     return 1;
 }
 
-// Main function
 int main() {
-    int n;
-    char board[MAX_SIZE][MAX_SIZE];
-    int row, col, turn = 0;
-    char symbols[2] = {'X', 'O'};
-
-    printf("Enter board size (3–10): ");
-    scanf("%d", &n);
-
-    if (n < 3 || n > 10) {
-        printf("Invalid size. Please enter a number between 3 and 10.\n");
+    srand(time(NULL));
+    logFile = fopen("game_log.txt", "w");
+    if (!logFile) {
+        printf("Error opening log file.\n");
         return 1;
     }
 
-    initializeBoard(board, n);
-
-    while (1) {
-        displayBoard(board, n);
-
-        // Accept and validate move
-        while (1) {
-            getUserMove(&row, &col, turn + 1, symbols[turn], n);
-            if (isValidMove(board, row, col, n)) break;
-            printf("Invalid move. Try again.\n");
-        }
-
-        placeSymbol(board, row, col, symbols[turn]);
-
-        // Check win
-        if (checkWin(board, n, symbols[turn])) {
-            displayBoard(board, n);
-            printf("Player %d (%c) wins!\n", turn + 1, symbols[turn]);
-            break;
-        }
-
-        // Check draw
-        if (isDraw(board, n)) {
-            displayBoard(board, n);
-            printf("It's a draw!\n");
-            break;
-        }
-
-        turn = 1 - turn; // Switch player
+    printf("Enter board size (3 to 10): ");
+    scanf("%d", &N);
+    if (N < MIN_SIZE || N > MAX_SIZE) {
+        printf("Invalid size. Please restart.\n");
+        return 1;
     }
 
+    initializeBoard();
+    char winner = ' ';
+    while (1) {
+        displayBoard();
+        getUserMove();
+        winner = checkWinner();
+        if (winner != ' ' || isDraw()) break;
+
+        playComputerTurn();
+        winner = checkWinner();
+        if (winner != ' ' || isDraw()) break;
+    }
+
+    displayBoard();
+    if (winner == 'X') printf("You win!\n");
+    else if (winner == 'O') printf("Computer wins!\n");
+    else printf("It's a draw!\n");
+
+    fclose(logFile);
     return 0;
 }
-
