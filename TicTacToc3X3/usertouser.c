@@ -6,6 +6,7 @@
 
 char board[MAX_SIZE][MAX_SIZE];
 int size;
+FILE *logFile; // Log file pointer
 
 // Initialize the board
 void initBoard(int n) {
@@ -40,9 +41,13 @@ int isValidMove(int row, int col) {
     return row >= 0 && row < size && col >= 0 && col < size && board[row][col] == ' ';
 }
 
+// Log move
+void logMove(char symbol, int row, int col) {
+    fprintf(logFile, "Player %c moved to (%d, %d)\n", symbol, row, col);
+}
+
 // Check for win condition
 int checkWin(char symbol) {
-    // Check rows and columns
     for (int i = 0; i < size; i++) {
         int rowCount = 0, colCount = 0;
         for (int j = 0; j < size; j++) {
@@ -52,7 +57,6 @@ int checkWin(char symbol) {
         if (rowCount == size || colCount == size) return 1;
     }
 
-    // Check diagonals
     int diag1 = 0, diag2 = 0;
     for (int i = 0; i < size; i++) {
         if (board[i][i] == symbol) diag1++;
@@ -78,6 +82,7 @@ void playerMove(char symbol) {
         scanf("%d %d", &row, &col);
     } while (!isValidMove(row, col));
     board[row][col] = symbol;
+    logMove(symbol, row, col);
 }
 
 // Computer move
@@ -89,13 +94,14 @@ void computerMove(char symbol) {
     } while (!isValidMove(row, col));
     printf("Computer %c plays at (%d, %d)\n", symbol, row, col);
     board[row][col] = symbol;
+    logMove(symbol, row, col);
 }
 
 // Main game loop
 void playGame(int mode) {
-    char player1 = 'X'; // Human
-    char player2 = 'O'; // Computer 1 or Player 2
-    char player3 = 'Z'; // Computer 2 (only in mode 3)
+    char player1 = 'X';
+    char player2 = 'O';
+    char player3 = 'Z';
     int turn = 0;
 
     while (1) {
@@ -103,7 +109,6 @@ void playGame(int mode) {
         char current;
 
         if (mode == 3) {
-            // 3-player mode: 1 human, 2 computers
             if (turn % 3 == 0) {
                 current = player1;
                 playerMove(current);
@@ -121,24 +126,25 @@ void playGame(int mode) {
                     printf("Human player %c wins!\n", current);
                 else
                     printf("Computer player %c wins!\n", current);
+                fprintf(logFile, "Player %c wins!\n", current);
                 break;
             }
         } else if (mode == 1) {
-            // User vs User
             current = (turn % 2 == 0) ? player1 : player2;
             playerMove(current);
             if (checkWin(current)) {
                 displayBoard();
                 printf("Player %c wins!\n", current);
+                fprintf(logFile, "Player %c wins!\n", current);
                 break;
             }
         } else if (mode == 2) {
-            // User vs Computer
             if (turn % 2 == 0) {
                 playerMove(player1);
                 if (checkWin(player1)) {
                     displayBoard();
                     printf("You win!\n");
+                    fprintf(logFile, "Player %c wins!\n", player1);
                     break;
                 }
             } else {
@@ -146,6 +152,7 @@ void playGame(int mode) {
                 if (checkWin(player2)) {
                     displayBoard();
                     printf("Computer wins!\n");
+                    fprintf(logFile, "Player %c wins!\n", player2);
                     break;
                 }
             }
@@ -154,6 +161,7 @@ void playGame(int mode) {
         if (isDraw()) {
             displayBoard();
             printf("It's a draw!\n");
+            fprintf(logFile, "Game ended in a draw.\n");
             break;
         }
 
@@ -180,7 +188,14 @@ int main() {
     printf("3. Multiplayer (1 human + 2 computers)\n");
     scanf("%d", &mode);
 
+    logFile = fopen("game_log.txt", "w");
+    if (!logFile) {
+        printf("Error opening log file.\n");
+        return 1;
+    }
+
     playGame(mode);
+    fclose(logFile);
 
     return 0;
 }
